@@ -61,6 +61,7 @@ type KubeSphereControllerManagerOptions struct {
 	ServiceMeshOptions    *servicemesh.Options
 	GatewayOptions        *gateway.Options
 	MonitoringOptions     *prometheus.Options
+	// 一个结构体，只有一个属性，就是string类型的Endpoint
 	AlertingOptions       *alerting.Options
 	LeaderElect           bool
 	LeaderElection        *leaderelection.LeaderElectionConfig

@@ -64,7 +64,7 @@ type MonitoringOperator interface {
 	GetAppWorkloads(ns string, apps []string) map[string][]string
 	GetSerivePodsMap(ns string, services []string) map[string][]string
 }
-
+ 
 type monitoringOperator struct {
 	prometheus     monitoring.Interface
 	metricsserver  monitoring.Interface
@@ -154,11 +154,12 @@ func (mo monitoringOperator) GetNamedMetrics(metrics []string, time time.Time, o
 }
 
 func (mo monitoringOperator) GetNamedMetricsOverTime(metrics []string, start, end time.Time, step time.Duration, opt monitoring.QueryOption) Metrics {
+	// 获取prometheus client查询结果，主要使用sync.WaitGroup并发查询，每个指标启动一个goroutine，最后将结果和并返回
 	ress := mo.prometheus.GetNamedMetricsOverTime(metrics, start, end, step, opt)
-
+	// 如果metrics-server 后端组件 是开启的状态
 	if mo.metricsserver != nil {
 
-		//Merge edge node metrics data
+		//Merge edge node metrics data //合并边缘节点数据
 		edgeMetrics := make(map[string]monitoring.MetricData)
 
 		for i, ressMetric := range ress {

@@ -164,6 +164,7 @@ func TestGetMetricLabelSet(t *testing.T) {
 			srv := mockPrometheusService("/api/v1/series", tt.fakeResp)
 			defer srv.Close()
 
+			
 			client, _ := NewPrometheus(&Options{Endpoint: srv.URL})
 			result := client.GetMetricLabelSet("default", time.Now(), time.Now())
 			if diff := cmp.Diff(result, expected); diff != "" {

@@ -66,6 +66,7 @@ func newTestConfig() (*Config, error) {
 			Host:  "http://sonarqube.kubesphere-devops-system.svc",
 			Token: "ABCDEFG",
 		},
+		
 		KubernetesOptions: &k8s.KubernetesOptions{
 			KubeConfig: "/Users/zry/.kube/config",
 			Master:     "https://127.0.0.1:6443",
@@ -124,7 +125,7 @@ func newTestConfig() (*Config, error) {
 			},
 			WeaveScopeHost: "weave-scope-app.weave",
 			IPPoolType:     networkv1alpha1.IPPoolTypeNone,
-		},
+		}, 
 		MonitoringOptions: &prometheus.Options{
 			Endpoint: "http://prometheus.kubesphere-monitoring-system.svc",
 		},

@@ -230,6 +230,8 @@ func handleNoHit(namedMetrics []string) model.Metrics {
 func (h handler) handleNamedMetricsQuery(resp *restful.Response, q queryOptions) {
 	var res model.Metrics
 
+	// q.namedMetrics 是一组按照监控指标级别分类好的拥有promsql expr定义的完整指标名数组
+    // 监控指标级别分类是根据 monitoring.Levelxxx在上一个栈里细分的，i.e: monitoring.LevelPod
 	var metrics []string
 	for _, metric := range q.namedMetrics {
 		if strings.HasPrefix(metric, model.MetricMeterPrefix) {

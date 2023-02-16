@@ -225,6 +225,9 @@ func (s *ServerRunOptions) NewAPIServer(stopCh <-chan struct{}) (*apiserver.APIS
 
 	apiServer.OpenpitrixClient = openpitrixv1.NewOpenpitrixClient(informerFactory, apiServer.KubernetesClient.KubeSphere(), s.OpenPitrixOptions, apiServer.ClusterClient, stopCh)
 
+
+	// 初始化绑定完毕后 , 启动 server 来响应请求 , 
+	// 要进行 addr 绑定，安全端口、不安全端口
 	server := &http.Server{
 		Addr: fmt.Sprintf(":%d", s.GenericServerRunOptions.InsecurePort),
 	}
@@ -241,7 +244,15 @@ func (s *ServerRunOptions) NewAPIServer(stopCh <-chan struct{}) (*apiserver.APIS
 		server.Addr = fmt.Sprintf(":%d", s.GenericServerRunOptions.SecurePort)
 	}
 
+	// 将自定义的 GVK 注册到 k8s 中，类似与以下数据
+// {Group: "", Version: "v1", Resource: "namespaces"}
+// {Group: "", Version: "v1", Resource: "nodes"}
+// {Group: "", Version: "v1", Resource: "resourcequotas"}
+// ...
+// {Group: "tenant.kubesphere.io", Version: "v1alpha1", Resource: "workspaces"}
+// {Group: "cluster.kubesphere.io", Version: "v1alpha1", Resource: "clusters"}
 	sch := scheme.Scheme
+	
 	if err := apis.AddToScheme(sch); err != nil {
 		klog.Fatalf("unable add APIs to scheme: %v", err)
 	}

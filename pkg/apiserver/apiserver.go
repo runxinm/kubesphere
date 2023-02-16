@@ -173,16 +173,22 @@ type APIServer struct {
 }
 
 func (s *APIServer) PrepareRun(stopCh <-chan struct{}) error {
+	// container来hold住拥有特定GVR的webservice
 	s.container = restful.NewContainer()
+	// 添加请求Request日志拦截器
 	s.container.Filter(logRequestAndResponse)
 	s.container.Router(restful.CurlyRouter{})
+	// 发生Recover时，绑定一个日志handler
 	s.container.RecoverHandler(func(panicReason interface{}, httpWriter http.ResponseWriter) {
 		logStackOnRecover(panicReason, httpWriter)
 	})
-
+	// 每个API组都构建一个webservice，然后根据路由规则来并绑定回调函数，通过AddToContainer来完成绑定
 	s.installKubeSphereAPIs(stopCh)
 	s.installCRDAPIs()
+	// 注册metrics指标: ks_server_request_total、ks_server_request_duration_seconds
+    // 绑定metrics handler
 	s.installMetricsAPI()
+	// 为有效请求增加监控计数
 	s.container.Filter(monitorRequest)
 
 	for _, ws := range s.container.RegisteredWebServices() {
@@ -190,7 +196,7 @@ func (s *APIServer) PrepareRun(stopCh <-chan struct{}) error {
 	}
 
 	s.Server.Handler = s.container
-
+	// 添加各个调用链的拦截器, 用于验证和路由分发
 	s.buildHandlerChain(stopCh)
 
 	return nil
@@ -211,7 +217,7 @@ func (s *APIServer) installMetricsAPI() {
 	initMetrics.Do(registerMetrics)
 	metrics.Defaults.Install(s.container)
 }
-
+ 
 // Install all kubesphere api groups
 // Installation happens before all informers start to cache objects, so
 //   any attempt to list objects using listers will get empty results.
@@ -226,10 +232,14 @@ func (s *APIServer) installKubeSphereAPIs(stopCh <-chan struct{}) {
 		s.InformerFactory,
 		s.DevopsClient)
 	rbacAuthorizer := rbac.NewRBACAuthorizer(amOperator)
-
+	// 调用各api组的AddToContainer方法来向container注册kapi
 	urlruntime.Must(configv1alpha2.AddToContainer(s.container, s.Config))
 	urlruntime.Must(resourcev1alpha3.AddToContainer(s.container, s.InformerFactory, s.RuntimeCache))
+	
+	// s.s.KubernetesClient.Kubernetes() <==> kubernetes.Interface
 	urlruntime.Must(monitoringv1alpha3.AddToContainer(s.container, s.KubernetesClient.Kubernetes(), s.MonitoringClient, s.MetricsClient, s.InformerFactory, s.OpenpitrixClient, s.RuntimeClient))
+	
+	
 	urlruntime.Must(meteringv1alpha1.AddToContainer(s.container, s.KubernetesClient.Kubernetes(), s.MonitoringClient, s.InformerFactory, s.RuntimeCache, s.Config.MeteringOptions, s.OpenpitrixClient, s.RuntimeClient))
 	urlruntime.Must(openpitrixv1.AddToContainer(s.container, s.InformerFactory, s.KubernetesClient.KubeSphere(), s.Config.OpenPitrixOptions, s.OpenpitrixClient))
 	urlruntime.Must(openpitrixv2alpha1.AddToContainer(s.container, s.InformerFactory, s.KubernetesClient.KubeSphere(), s.Config.OpenPitrixOptions))
@@ -288,7 +298,8 @@ func (s *APIServer) installCRDAPIs() {
 }
 
 func (s *APIServer) Run(ctx context.Context) (err error) {
-
+	//启动informer，包括k8s和ks的informers,同步资源，包括k8s和ks的GVR
+    //检查GVR是否存在，不存在就报错警告，存在就同步
 	err = s.waitForResourceSync(ctx)
 	if err != nil {
 		return err
@@ -302,6 +313,7 @@ func (s *APIServer) Run(ctx context.Context) (err error) {
 		_ = s.Server.Shutdown(shutdownCtx)
 	}()
 
+	// 启动server
 	klog.V(0).Infof("Start listening on %s", s.Server.Addr)
 	if s.Server.TLSConfig != nil {
 		err = s.Server.ListenAndServeTLS("", "")
